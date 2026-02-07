@@ -71,8 +71,10 @@ function updateHomeHeader() {
         };
     } else {
         welcomeText.innerHTML = `Hi, <span class="font-bold text-white">random</span>`;
-        userIcon.classList.add('hidden');
-        userIcon.style.display = "none";
+        if(userIcon) {
+            userIcon.classList.add('hidden');
+            userIcon.style.display = "none";
+        }
     }
 }
 
@@ -100,7 +102,8 @@ async function runExecute() {
             const log = document.createElement('div');
             log.className = "mb-1 border-l-2 border-green-500 pl-2 text-zinc-400 text-[10px]";
             log.innerText = `[${new Date().toLocaleTimeString()}] Sent successfully`;
-            document.getElementById('console').prepend(log);
+            const consoleBox = document.getElementById('console');
+            if(consoleBox) consoleBox.prepend(log);
         }
     } catch (err) {
         notify("Server connection error ❌", true);
@@ -176,6 +179,7 @@ function deactivateUser() {
 // ==========================================
 function renderThemes() {
     const grid = document.getElementById('theme-grid');
+    if(!grid) return;
     const colors = ['#00ffcc', '#ff0055', '#0077ff', '#ffaa00', '#a200ff', '#00ff44', '#ff0000', '#00e1ff', '#ff00d4', '#ccff00', '#00ffa2', '#ff5e00', '#002bff', '#ff0080', '#80ff00', '#00ffea', '#ffb300', '#5500ff', '#00ff77', '#ff0022', '#00ccff', '#e1ff00', '#aa00ff', '#ff8000', '#00ff11', '#ff00aa', '#0066ff', '#22ff00', '#ff1100', '#00f2ff', '#d400ff', '#77ff00', '#0033ff', '#ffcc00', '#ffffff'];
 
     grid.innerHTML = colors.map(color => `
@@ -211,14 +215,12 @@ function renderScriptHub() {
 
     container.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6";
     container.innerHTML = scripts.map(s => {
-        const fileName = encodeURIComponent(s.img);
-        const localPath = `./Image scripts/${fileName}`;
         const robloxFallback = `https://www.roblox.com/asset-thumbnail/image?assetId=${s.assetId}&width=420&height=420&format=png`;
 
         return `
         <div class="glass-card flex flex-col justify-between items-center h-full p-4 border border-white/5 hover:border-white/20 transition-all">
             <div class="w-full flex flex-col items-center gap-3">
-                <img src="${localPath}" 
+                <img src="./Image scripts/${encodeURIComponent(s.img)}" 
                      onerror="this.src='${robloxFallback}'"
                      class="w-full aspect-square object-cover rounded-xl shadow-lg border border-white/10">
                 <h3 class="text-lg font-bold text-white text-center">${s.name}</h3>
@@ -253,15 +255,18 @@ async function refreshGames() {
 
     try {
         const response = await fetch('/api/games?t=' + Date.now());
-        let games = await response.json(); 
+        let games = [];
         
-        // --- PERSISTENCIA LOCAL: Atrapamos el juego si aparece ---
-        if (games && games.length > 0) {
-            localStorage.setItem('last_games_cache', JSON.stringify(games));
-        } else {
-            // Si el servidor está vacío, usamos lo que guardamos en el navegador
-            const saved = localStorage.getItem('last_games_cache');
-            if (saved) games = JSON.parse(saved);
+        if (response.ok) {
+            games = await response.json();
+            // SI EL SERVIDOR RESPONDE JUEGOS, ACTUALIZAMOS LA CACHÉ
+            if (games && games.length > 0) {
+                localStorage.setItem('last_games_cache', JSON.stringify(games));
+            } else {
+                // SI EL SERVIDOR ESTÁ VACÍO, INTENTAMOS USAR LA CACHÉ
+                const saved = localStorage.getItem('last_games_cache');
+                if (saved) games = JSON.parse(saved);
+            }
         }
 
         if(statGames) statGames.innerText = games.length;
@@ -301,12 +306,11 @@ async function refreshGames() {
                 nav.className = "col-span-full flex justify-center gap-4 mt-6";
                 nav.innerHTML = `
                     <button onclick="changePage(-1)" class="px-4 py-2 bg-white/10 rounded-lg text-white ${currentPage === 1 ? 'opacity-30 pointer-events-none' : ''}">Prev</button>
-                    <span class="text-white self-center">Page ${currentPage} of ${totalPages}</span>
+                    <span class="text-white self-center text-sm">Page ${currentPage} of ${totalPages}</span>
                     <button onclick="changePage(1)" class="px-4 py-2 bg-white/10 rounded-lg text-white ${currentPage === totalPages ? 'opacity-30 pointer-events-none' : ''}">Next</button>
                 `;
                 container.appendChild(nav);
             }
-
         } else {
             container.innerHTML = '<p class="text-zinc-500 py-10 text-center col-span-full">No games infected yet.</p>';
         }
