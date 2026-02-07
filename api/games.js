@@ -1,5 +1,5 @@
-// Usamos una variable fuera del handler para persistencia temporal
-let gamesCache = []; 
+// Variable global (se mantiene mientras el servidor esté "despierto")
+let globalGames = [];
 
 export default function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -9,19 +9,21 @@ export default function handler(req, res) {
     if (req.method === 'POST') {
         const data = req.body;
         data.lastUpdate = Date.now();
-        
-        // Filtramos para no repetir el mismo juego (usando jobId)
-        gamesCache = gamesCache.filter(g => g.jobId !== data.jobId);
-        gamesCache.push(data);
+
+        // Si el juego ya existe, lo actualizamos; si no, lo añadimos
+        const index = globalGames.findIndex(g => g.jobId === data.jobId);
+        if (index !== -1) {
+            globalGames[index] = data;
+        } else {
+            globalGames.push(data);
+        }
         
         return res.status(200).json({ success: true });
     }
 
     if (req.method === 'GET') {
-        const now = Date.now();
-        // Limpiamos SOLO juegos que tengan más de 5 minutos de inactividad
-        gamesCache = gamesCache.filter(g => (now - g.lastUpdate) < 300000);
-        
-        return res.status(200).json(gamesCache);
+        // ELIMINAMOS el código que filtraba por tiempo (now - lastUpdate)
+        // Ahora simplemente enviamos lo que haya en la lista
+        return res.status(200).json(globalGames);
     }
 }
