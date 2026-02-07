@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderScriptHub();
     renderWhitelist();
     renderThemes(); 
-    refreshGames(); 
+    refreshGames(); // Carga inicial
     createParticles();
     updateStatsUI();
 
@@ -246,7 +246,7 @@ function sendToEditor(code) {
 }
 
 // ==========================================
-// --- GAMES (LÓGICA DE PERSISTENCIA SS) ---
+// --- GAMES (FIXED PERSISTENCE) ---
 // ==========================================
 async function refreshGames() {
     const container = document.getElementById('games-container');
@@ -261,37 +261,33 @@ async function refreshGames() {
             serverGames = await response.json();
         }
 
-        // --- FUSIÓN MAESTRA (AQUÍ SE QUEDA PARA SIEMPRE) ---
-        let localCache = JSON.parse(localStorage.getItem('ss_total_cache')) || [];
+        // --- LÓGICA DE PERSISTENCIA REAL ---
+        // 1. Cargamos lo que ya teníamos guardado en el navegador (nuestra "DB")
+        let persistentList = JSON.parse(localStorage.getItem('ss_persistent_games')) || [];
 
+        // 2. Si el servidor nos da juegos nuevos, los fusionamos
         if (serverGames && serverGames.length > 0) {
             serverGames.forEach(newGame => {
-                // Si el juego no está en nuestra lista guardada, lo añadimos
-                const exists = localCache.find(g => g.jobId === newGame.jobId);
-                if (!exists) {
-                    localCache.unshift(newGame); // Los nuevos arriba
+                const index = persistentList.findIndex(g => g.jobId === newGame.jobId);
+                if (index === -1) {
+                    persistentList.unshift(newGame); // Añadir nuevo al principio
                 } else {
-                    // Si ya existe, actualizamos los datos (jugadores, etc)
-                    const idx = localCache.findIndex(g => g.jobId === newGame.jobId);
-                    localCache[idx] = newGame;
+                    persistentList[index] = newGame; // Actualizar existente
                 }
             });
-            // Guardamos la lista fusionada en el navegador
-            localStorage.setItem('ss_total_cache', JSON.stringify(localCache));
+            // 3. Guardamos la lista actualizada para que no desaparezca nunca
+            localStorage.setItem('ss_persistent_games', JSON.stringify(persistentList));
         }
 
-        // Usamos la lista de la memoria local para renderizar (nunca estará vacía si ya hubo juegos)
-        const finalGamesList = localCache;
+        // Mostramos la lista persistente (aunque el servidor de Vercel se apague)
+        if(statGames) statGames.innerText = persistentList.length;
 
-        if(statGames) statGames.innerText = finalGamesList.length;
-
-        if (finalGamesList && finalGamesList.length > 0) {
+        if (persistentList.length > 0) {
             const gamesPerPage = 15;
-            const totalPages = Math.ceil(finalGamesList.length / gamesPerPage);
-            
+            const totalPages = Math.ceil(persistentList.length / gamesPerPage);
             const start = (currentPage - 1) * gamesPerPage;
             const end = start + gamesPerPage;
-            const paginatedGames = finalGamesList.slice(start, end);
+            const paginatedGames = persistentList.slice(start, end);
 
             container.innerHTML = paginatedGames.map(g => {
                 const robloxLink = `https://www.roblox.com/games/${g.gameId}`;
