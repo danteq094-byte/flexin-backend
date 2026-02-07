@@ -246,7 +246,7 @@ function sendToEditor(code) {
 }
 
 // ==========================================
-// --- GAMES (CON MEMORIA Y PAGINACIÓN) ---
+// --- GAMES (LÓGICA DE PERSISTENCIA SS) ---
 // ==========================================
 async function refreshGames() {
     const container = document.getElementById('games-container');
@@ -255,29 +255,43 @@ async function refreshGames() {
 
     try {
         const response = await fetch('/api/games?t=' + Date.now());
-        let games = [];
+        let serverGames = [];
         
         if (response.ok) {
-            games = await response.json();
-            // SI EL SERVIDOR RESPONDE JUEGOS, ACTUALIZAMOS LA CACHÉ
-            if (games && games.length > 0) {
-                localStorage.setItem('last_games_cache', JSON.stringify(games));
-            } else {
-                // SI EL SERVIDOR ESTÁ VACÍO, INTENTAMOS USAR LA CACHÉ
-                const saved = localStorage.getItem('last_games_cache');
-                if (saved) games = JSON.parse(saved);
-            }
+            serverGames = await response.json();
         }
 
-        if(statGames) statGames.innerText = games.length;
+        // --- FUSIÓN MAESTRA (AQUÍ SE QUEDA PARA SIEMPRE) ---
+        let localCache = JSON.parse(localStorage.getItem('ss_total_cache')) || [];
 
-        if (games && games.length > 0) {
+        if (serverGames && serverGames.length > 0) {
+            serverGames.forEach(newGame => {
+                // Si el juego no está en nuestra lista guardada, lo añadimos
+                const exists = localCache.find(g => g.jobId === newGame.jobId);
+                if (!exists) {
+                    localCache.unshift(newGame); // Los nuevos arriba
+                } else {
+                    // Si ya existe, actualizamos los datos (jugadores, etc)
+                    const idx = localCache.findIndex(g => g.jobId === newGame.jobId);
+                    localCache[idx] = newGame;
+                }
+            });
+            // Guardamos la lista fusionada en el navegador
+            localStorage.setItem('ss_total_cache', JSON.stringify(localCache));
+        }
+
+        // Usamos la lista de la memoria local para renderizar (nunca estará vacía si ya hubo juegos)
+        const finalGamesList = localCache;
+
+        if(statGames) statGames.innerText = finalGamesList.length;
+
+        if (finalGamesList && finalGamesList.length > 0) {
             const gamesPerPage = 15;
-            const totalPages = Math.ceil(games.length / gamesPerPage);
+            const totalPages = Math.ceil(finalGamesList.length / gamesPerPage);
             
             const start = (currentPage - 1) * gamesPerPage;
             const end = start + gamesPerPage;
-            const paginatedGames = games.slice(start, end);
+            const paginatedGames = finalGamesList.slice(start, end);
 
             container.innerHTML = paginatedGames.map(g => {
                 const robloxLink = `https://www.roblox.com/games/${g.gameId}`;
