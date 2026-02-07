@@ -1,4 +1,5 @@
-let games = new Map();
+// Usamos una variable fuera del handler para persistencia temporal
+let gamesCache = []; 
 
 export default function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -7,20 +8,20 @@ export default function handler(req, res) {
 
     if (req.method === 'POST') {
         const data = req.body;
-        // Usamos el jobId de Roblox para identificar el servidor único
         data.lastUpdate = Date.now();
-        games.set(data.jobId || 'default-server', data);
+        
+        // Filtramos para no repetir el mismo juego (usando jobId)
+        gamesCache = gamesCache.filter(g => g.jobId !== data.jobId);
+        gamesCache.push(data);
+        
         return res.status(200).json({ success: true });
     }
 
     if (req.method === 'GET') {
         const now = Date.now();
-        // CAMBIO: Ahora espera 2 minutos (120000ms) antes de borrar un juego inactivo
-        for (let [id, g] of games) {
-            if (now - g.lastUpdate > 120000) { 
-                games.delete(id);
-            }
-        }
-        return res.status(200).json(Array.from(games.values()));
+        // Limpiamos SOLO juegos que tengan más de 5 minutos de inactividad
+        gamesCache = gamesCache.filter(g => (now - g.lastUpdate) < 300000);
+        
+        return res.status(200).json(gamesCache);
     }
 }
