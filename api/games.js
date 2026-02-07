@@ -7,15 +7,15 @@ export default function handler(req, res) {
 
     if (req.method === 'POST') {
         const data = req.body;
+        // Tu code infect envía jobId, name, players, etc.
         data.lastUpdate = Date.now();
-        // Usamos el jobId que envía tu código infect
-        games.set(data.jobId, data);
+        games.set(data.jobId, data); 
         return res.status(200).json({ success: true });
     }
 
     if (req.method === 'GET') {
         const now = Date.now();
-        // Borra servidores inactivos cada 15 segundos
+        // Borramos los juegos que no se han actualizado en 15 segundos
         for (let [id, g] of games) {
             if (now - g.lastUpdate > 15000) games.delete(id);
         }
