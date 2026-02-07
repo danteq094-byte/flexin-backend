@@ -7,17 +7,19 @@ export default function handler(req, res) {
 
     if (req.method === 'POST') {
         const data = req.body;
-        // Tu code infect envía jobId, name, players, etc.
         data.lastUpdate = Date.now();
-        games.set(data.jobId, data); 
+        // Guardamos usando el JobId que envía tu infect
+        games.set(data.jobId, data);
         return res.status(200).json({ success: true });
     }
 
     if (req.method === 'GET') {
         const now = Date.now();
-        // Borramos los juegos que no se han actualizado en 15 segundos
+        // CAMBIO: Aumentamos a 30000 (30 segundos) para que no desaparezca el cuadro
         for (let [id, g] of games) {
-            if (now - g.lastUpdate > 15000) games.delete(id);
+            if (now - g.lastUpdate > 30000) { 
+                games.delete(id);
+            }
         }
         return res.status(200).json(Array.from(games.values()));
     }
