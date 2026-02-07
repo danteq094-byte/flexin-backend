@@ -4,7 +4,7 @@
 let wList = JSON.parse(localStorage.getItem('wList')) || [];
 let execs = parseInt(localStorage.getItem('execs')) || 0;
 let wCount = parseInt(localStorage.getItem('wCount')) || 0;
-let currentPage = 1; // Para el control de las pestañas de 15 juegos
+let currentPage = 1; 
 
 // ==========================================
 // --- INICIALIZACIÓN ---
@@ -85,7 +85,6 @@ async function runExecute() {
     if (!code.trim()) return notify("Put a script first! ❌", true);
 
     try {
-        // CAMBIO: Se usa ruta relativa para evitar bloqueos
         const response = await fetch('/api/execute', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -245,7 +244,7 @@ function sendToEditor(code) {
 }
 
 // ==========================================
-// --- GAMES (CON PAGINACIÓN DE 15) ---
+// --- GAMES (CON MEMORIA Y PAGINACIÓN) ---
 // ==========================================
 async function refreshGames() {
     const container = document.getElementById('games-container');
@@ -253,13 +252,21 @@ async function refreshGames() {
     if(!container) return;
 
     try {
-        // CAMBIO: Se usa ruta relativa para obtener los juegos de tu propia API
         const response = await fetch('/api/games?t=' + Date.now());
-        const games = await response.json(); 
+        let games = await response.json(); 
         
+        // --- PERSISTENCIA LOCAL: Atrapamos el juego si aparece ---
+        if (games && games.length > 0) {
+            localStorage.setItem('last_games_cache', JSON.stringify(games));
+        } else {
+            // Si el servidor está vacío, usamos lo que guardamos en el navegador
+            const saved = localStorage.getItem('last_games_cache');
+            if (saved) games = JSON.parse(saved);
+        }
+
         if(statGames) statGames.innerText = games.length;
 
-        if (games.length > 0) {
+        if (games && games.length > 0) {
             const gamesPerPage = 15;
             const totalPages = Math.ceil(games.length / gamesPerPage);
             
