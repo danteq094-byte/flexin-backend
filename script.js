@@ -85,7 +85,8 @@ async function runExecute() {
     if (!code.trim()) return notify("Put a script first! ❌", true);
 
     try {
-        const response = await fetch('https://flexin-serverside.vercel.app/api/execute', {
+        // CAMBIO: Se usa ruta relativa para evitar bloqueos
+        const response = await fetch('/api/execute', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ script: code })
@@ -252,8 +253,9 @@ async function refreshGames() {
     if(!container) return;
 
     try {
-        const response = await fetch('https://flexin-serverside.vercel.app/api/games?t=' + Date.now());
-        const games = await response.json(); // Array directo
+        // CAMBIO: Se usa ruta relativa para obtener los juegos de tu propia API
+        const response = await fetch('/api/games?t=' + Date.now());
+        const games = await response.json(); 
         
         if(statGames) statGames.innerText = games.length;
 
@@ -261,7 +263,6 @@ async function refreshGames() {
             const gamesPerPage = 15;
             const totalPages = Math.ceil(games.length / gamesPerPage);
             
-            // Lógica de pestañas
             const start = (currentPage - 1) * gamesPerPage;
             const end = start + gamesPerPage;
             const paginatedGames = games.slice(start, end);
@@ -288,7 +289,6 @@ async function refreshGames() {
                 </div>`;
             }).join('');
 
-            // Controles de navegación de página
             if (totalPages > 1) {
                 const nav = document.createElement('div');
                 nav.className = "col-span-full flex justify-center gap-4 mt-6";
