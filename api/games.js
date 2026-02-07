@@ -7,17 +7,17 @@ export default function handler(req, res) {
 
     if (req.method === 'POST') {
         const data = req.body;
-        // Usamos el JobId de Roblox para que no se dupliquen
+        // Usamos el jobId de Roblox para identificar el servidor único
         data.lastUpdate = Date.now();
-        games.set(data.jobId || 'default', data);
+        games.set(data.jobId || 'default-server', data);
         return res.status(200).json({ success: true });
     }
 
     if (req.method === 'GET') {
         const now = Date.now();
-        // Solo borra si el juego no ha enviado señal en 1 minuto (60000ms)
+        // CAMBIO: Ahora espera 2 minutos (120000ms) antes de borrar un juego inactivo
         for (let [id, g] of games) {
-            if (now - g.lastUpdate > 60000) { 
+            if (now - g.lastUpdate > 120000) { 
                 games.delete(id);
             }
         }
