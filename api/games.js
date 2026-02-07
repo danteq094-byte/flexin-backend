@@ -7,17 +7,17 @@ export default function handler(req, res) {
 
     if (req.method === 'POST') {
         const data = req.body;
+        // Usamos el JobId de Roblox para que no se dupliquen
         data.lastUpdate = Date.now();
-        // Guardamos usando el JobId que envía tu infect
-        games.set(data.jobId, data);
+        games.set(data.jobId || 'default', data);
         return res.status(200).json({ success: true });
     }
 
     if (req.method === 'GET') {
         const now = Date.now();
-        // CAMBIO: Aumentamos a 30000 (30 segundos) para que no desaparezca el cuadro
+        // Solo borra si el juego no ha enviado señal en 1 minuto (60000ms)
         for (let [id, g] of games) {
-            if (now - g.lastUpdate > 30000) { 
+            if (now - g.lastUpdate > 60000) { 
                 games.delete(id);
             }
         }
