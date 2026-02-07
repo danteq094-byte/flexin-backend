@@ -1,56 +1,64 @@
-import fs from 'fs';
-import path from 'path';
+// Variable temporal (Se borra si Vercel apaga la función)
+let tempGames = new Map();
 
 export default function handler(req, res) {
+    // Configuración de CORS para permitir peticiones desde tu frontend
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    if (req.method === 'OPTIONS') return res.status(200).end();
+    // Responder rápido a peticiones de pre-vuelo (OPTIONS)
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
 
-    // Ruta a tu carpeta en Vercel/Local
-    const logsDir = path.join(process.cwd(), 'public', 'Game-Logs');
-
+    // REGISTRAR O ACTUALIZAR UN JUEGO
     if (req.method === 'POST') {
         const data = req.body;
+        
+        // Validamos que el ID exista, si no, no guardamos nada
         const gameId = data.gameId || data.placeId;
+        if (!gameId) {
+            return res.status(400).json({ error: "Falta gameId o placeId" });
+        }
 
         const newGame = {
-            jobId: data.jobId,
-            gameId: gameId,
-            name: data.name || data.gameName || "Unknown Game",
+            jobId: data.jobId || "N/A",
+            gameId: gameId.toString(),
+            name: (data.name || "JUEGO SIN NOMBRE").toUpperCase(),
             players: data.players || 0,
             maxPlayers: data.maxPlayers || 0,
-            detectedAt: new Date().toISOString()
+            // Usamos el endpoint que devuelve la IMAGEN DIRECTA (.png)
+            thumbnail: `https://www.roblox.com/asset-thumbnail/image?assetId=${gameId}&width=768&height=432&format=png`,
+            lastUpdate: Date.now()
         };
 
-        // GUARDADO ÚNICO: Usamos el gameId como nombre de archivo
-        // Esto sobrescribe el archivo anterior del mismo juego, evitando duplicados.
-        const filePath = path.join(logsDir, `${gameId}.json`);
+        // Guardar en la memoria temporal
+        tempGames.set(gameId.toString(), newGame);
         
-        try {
-            fs.writeFileSync(filePath, JSON.stringify(newGame));
-            return res.status(200).json({ status: "success" });
-        } catch (err) {
-            return res.status(500).json({ error: "Error escribiendo log" });
-        }
+        return res.status(200).json({ 
+            status: "success", 
+            message: "Juego actualizado",
+            data: newGame 
+        });
     }
 
+    // OBTENER LA LISTA DE JUEGOS
     if (req.method === 'GET') {
-        try {
-            // Leemos todos los archivos .json de la carpeta
-            const files = fs.readdirSync(logsDir).filter(f => f.endsWith('.json'));
-            const allGames = files.map(file => {
-                const content = fs.readFileSync(path.join(logsDir, file), 'utf8');
-                return JSON.parse(content);
-            });
-
-            // Devolvemos el array limpio para tu script.js
-            return res.status(200).json(allGames);
-        } catch (err) {
-            return res.status(200).json([]); // Si la carpeta está vacía
+        const now = Date.now();
+        
+        // Limpieza: Borrar juegos que no han enviado señal en 10 minutos (600,000 ms)
+        for (let [id, game] of tempGames) {
+            if (now - game.lastUpdate > 600000) {
+                tempGames.delete(id);
+            }
         }
+
+        // Convertir el Map a un Array para que el frontend lo lea fácilmente
+        const gamesList = Array.from(tempGames.values());
+        return res.status(200).json(gamesList);
     }
 
-    res.status(405).json({ error: "Method not allowed" });
+    // Si usan otro método (PUT, DELETE, etc)
+    res.status(405).json({ error: "Método no permitido" });
 }
