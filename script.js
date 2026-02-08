@@ -260,17 +260,17 @@ async function refreshGames() {
             serverGames = await response.json();
         }
 
-        // CARGAR DB LOCAL (Lo que nunca muere)
+        // CARGAR DB LOCAL (Lo que permite que no desaparezcan nunca)
         let persistentDB = JSON.parse(localStorage.getItem('ss_total_db')) || [];
 
-        // FUSIONAR JUEGOS NUEVOS
-        if (serverGames && serverGames.length > 0) {
+        // FUSIONAR JUEGOS: Solo añadimos si el jobId no existe
+        if (Array.isArray(serverGames) && serverGames.length > 0) {
             serverGames.forEach(newG => {
                 const index = persistentDB.findIndex(saved => saved.jobId === newG.jobId);
                 if (index === -1) {
-                    persistentDB.unshift(newG); // Nuevo arriba
+                    persistentDB.unshift(newG); 
                 } else {
-                    persistentDB[index] = newG; // Actualizar datos
+                    persistentDB[index] = newG; // Actualizar datos (jugadores, etc)
                 }
             });
             localStorage.setItem('ss_total_db', JSON.stringify(persistentDB));
@@ -287,7 +287,7 @@ async function refreshGames() {
 
             container.innerHTML = paginatedGames.map(g => {
                 const robloxLink = `https://www.roblox.com/games/${g.gameId}`;
-                // Imagen generada dinámicamente para que no falle nunca
+                // Imagen oficial de Roblox usando el gameId de tu script
                 const thumb = `https://www.roblox.com/asset-thumbnail/image?assetId=${g.gameId}&width=150&height=150&format=png`;
                 
                 return `
@@ -297,12 +297,14 @@ async function refreshGames() {
                              onerror="this.src='https://tr.rbxcdn.com/38c353386000e311a268e37d97745778/150/150/Image/Png'"
                              class="w-14 h-14 rounded-lg border border-white/10 object-cover">
                         <div class="overflow-hidden">
-                            <h3 class="text-lg font-bold text-white truncate">${g.name || 'Infected Server'}</h3>
+                            <h3 class="text-lg font-bold text-white truncate">${g.name || 'Server Infectado'}</h3>
                             <p class="text-zinc-500 text-[10px]">ID: ${g.gameId}</p>
                         </div>
                     </div>
                     <div class="flex items-center justify-between mt-4">
-                        <span class="text-[9px] bg-green-500/20 text-green-400 px-2 py-1 rounded-md font-bold uppercase">🟢 ${g.players || 0} Players</span>
+                        <span class="text-[9px] bg-green-500/20 text-green-400 px-2 py-1 rounded-md font-bold uppercase">
+                            🟢 ${g.players || 0} Players
+                        </span>
                         <a href="${robloxLink}" target="_blank" class="text-[10px] font-black uppercase dynamic-color hover:opacity-80 transition-all cursor-pointer">
                             Select Server ↗
                         </a>
@@ -325,6 +327,15 @@ async function refreshGames() {
         }
     } catch (err) {
         console.error("Fetch error:", err);
+    }
+}
+
+// Función extra para que puedas limpiar la lista cuando quieras
+function clearGamesList() {
+    if(confirm("¿Quieres borrar todos los juegos guardados?")) {
+        localStorage.removeItem('ss_total_db');
+        refreshGames();
+        notify("List Cleared 🗑️");
     }
 }
 
